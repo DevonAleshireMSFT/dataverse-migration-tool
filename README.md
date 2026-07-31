@@ -9,3 +9,7 @@ Power Platform Code Apps, PCF, Dataverse Web API, `pac` CLI, .NET 9, C#, TypeScr
 ## Status
 
 Early scaffolding. This repository is public open source and will be expanded as the project takes shape.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for coding standards, architecture boundaries, and contribution expectations.
