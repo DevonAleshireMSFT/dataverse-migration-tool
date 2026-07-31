@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="DataverseMigrationTool.Api/DataverseMigrationTool.Api.csproj" />
+  <Project Path="DataverseMigrationTool.Application.Tests/DataverseMigrationTool.Application.Tests.csproj" />
+  <Project Path="DataverseMigrationTool.Application/DataverseMigrationTool.Application.csproj" />
+  <Project Path="DataverseMigrationTool.Domain.Tests/DataverseMigrationTool.Domain.Tests.csproj" />
+  <Project Path="DataverseMigrationTool.Domain/DataverseMigrationTool.Domain.csproj" />
+  <Project Path="DataverseMigrationTool.Infrastructure/DataverseMigrationTool.Infrastructure.csproj" />
+</Solution>

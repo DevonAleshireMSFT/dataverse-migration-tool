@@ -45,6 +45,9 @@ pac/
 *.unmanaged.zip
 *.solution.zip
 
+# Exported/built solution artifacts (deploy output, not source)
+artifacts/
+
 # Local environment, credentials, and certificates
 .env
 .env.*
