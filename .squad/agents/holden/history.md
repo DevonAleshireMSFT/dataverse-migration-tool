@@ -11,3 +11,5 @@
 ## Learnings
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
+
+📌 Team update (2026-07-30T15:52:36-07:00): Repository is now live at DevonAleshireMSFT/dataverse-migration-tool (public).
