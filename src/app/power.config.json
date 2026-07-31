@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "appId": "a281f451-1359-4287-8791-c2328f32a994",
+  "appDisplayName": "Dataverse Migration Tool",
+  "region": "prod",
+  "environmentId": "c3d6db85-3f4e-e884-a750-14764eb41317",
+  "description": "Migrate Dataverse data and solution components between Power Platform environments.",
+  "buildPath": "./dist",
+  "buildEntryPoint": "index.html",
+  "localAppUrl": "http://localhost:3000",
+  "logoPath": "Default",
+  "connectionReferences": {},
+  "databaseReferences": {}
+}
