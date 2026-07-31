@@ -1,0 +1,26 @@
+{
+  "universe_usage_history": [
+    {
+      "universe": "The Expanse",
+      "assignment_id": "dmt-2026-07-30",
+      "assigned_at": "2026-07-30"
+    }
+  ],
+  "assignment_cast_snapshots": {
+    "dmt-2026-07-30": {
+      "universe": "The Expanse",
+      "assigned_at": "2026-07-30",
+      "project": "dataverse-migration-tool",
+      "cast": {
+        "holden": "Holden",
+        "naomi": "Naomi",
+        "amos": "Amos",
+        "alex": "Alex",
+        "bobbie": "Bobbie",
+        "drummer": "Drummer",
+        "prax": "Prax",
+        "monica": "Monica"
+      }
+    }
+  }
+}

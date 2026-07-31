@@ -1,0 +1,68 @@
+{
+  "agents": {
+    "holden": {
+      "persistent_name": "Holden",
+      "role": "Lead / Solution Architect",
+      "universe": "The Expanse",
+      "created_at": "2026-07-30",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "naomi": {
+      "persistent_name": "Naomi",
+      "role": "Power Platform & Dataverse Engineer",
+      "universe": "The Expanse",
+      "created_at": "2026-07-30",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "amos": {
+      "persistent_name": "Amos",
+      "role": "Migration & API Integration Engineer",
+      "universe": "The Expanse",
+      "created_at": "2026-07-30",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "alex": {
+      "persistent_name": "Alex",
+      "role": "UI/UX · React · PCF Engineer",
+      "universe": "The Expanse",
+      "created_at": "2026-07-30",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "bobbie": {
+      "persistent_name": "Bobbie",
+      "role": "Security · Auth · Government Compliance",
+      "universe": "The Expanse",
+      "created_at": "2026-07-30",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "drummer": {
+      "persistent_name": "Drummer",
+      "role": "DevOps · CI/CD · Release Manager",
+      "universe": "The Expanse",
+      "created_at": "2026-07-30",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "prax": {
+      "persistent_name": "Prax",
+      "role": "Test Automation Engineer",
+      "universe": "The Expanse",
+      "created_at": "2026-07-30",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "monica": {
+      "persistent_name": "Monica",
+      "role": "Documentation & Technical Writer",
+      "universe": "The Expanse",
+      "created_at": "2026-07-30",
+      "legacy_named": false,
+      "status": "active"
+    }
+  }
+}
