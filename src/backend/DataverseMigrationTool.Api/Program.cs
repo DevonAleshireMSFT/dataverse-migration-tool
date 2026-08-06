@@ -1,10 +1,12 @@
 using DataverseMigrationTool.Application.Contracts;
 using DataverseMigrationTool.Application.Ports;
 using DataverseMigrationTool.Infrastructure;
+using DataverseMigrationTool.Infrastructure.Configuration;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+builder.Services.AddMigrationConfiguration(builder.Configuration);
 builder.Services.AddInfrastructure();
 
 WebApplication app = builder.Build();
