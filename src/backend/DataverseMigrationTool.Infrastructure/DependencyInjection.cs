@@ -1,5 +1,6 @@
 using DataverseMigrationTool.Application.Ports;
 using DataverseMigrationTool.Infrastructure.Dataverse;
+using DataverseMigrationTool.Infrastructure.Dataverse.Auth;
 using DataverseMigrationTool.Infrastructure.Jobs;
 using DataverseMigrationTool.Infrastructure.Logging;
 using DataverseMigrationTool.Infrastructure.Validation;
@@ -12,7 +13,9 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         services.AddSingleton<IDataverseEndpointResolver, DefaultDataverseEndpointResolver>();
-        services.AddSingleton<IDataverseTokenProvider, DeferredDataverseTokenProvider>();
+        services.AddSingleton<DataverseAuthorityResolver>();
+        services.AddSingleton<IDataverseDeviceCodePrompt, RejectingDataverseDeviceCodePrompt>();
+        services.AddSingleton<IDataverseTokenProvider, MsalDataverseTokenProvider>();
         services.AddSingleton<IDataverseProvider, ServiceClientDataverseProvider>();
         services.AddSingleton<IMigrationJobStore, InMemoryMigrationJobStore>();
         services.AddSingleton<IValidationEngine, PlaceholderValidationEngine>();
