@@ -22,7 +22,13 @@ Domain does not reference the Dataverse SDK, ASP.NET Core, UI frameworks, or inf
 
 ## Composition root
 
-`DataverseMigrationTool.Api/Program.cs` is the composition root. It calls `AddInfrastructure()` from the Infrastructure project to register the current provider, job store, validation engine, migration engine, and operation logger implementations.
+`DataverseMigrationTool.Api/Program.cs` is the composition root. It calls `AddMigrationConfiguration(builder.Configuration)` to register the validated configuration provider, then `AddInfrastructure()` to register the current provider, job store, validation engine, migration engine, and operation logger implementations.
+
+## Configuration
+
+Configuration contracts live in Application; Infrastructure only adapts ASP.NET Core `IConfiguration`. Source precedence is defaults, appsettings file values, environment variables, then optional composition/test overrides. Profiles configure distinct `Source` and `Target` Dataverse environments, including `DataverseCloud` selection for commercial, GCC, GCC High, and DoD endpoint resolution.
+
+Secrets are represented only as `ClientSecretReference` values such as environment variable names or Key Vault secret names. Do not put plaintext client secrets in appsettings, tests, source code, or committed documentation.
 
 ## Security posture
 
@@ -35,4 +41,3 @@ dotnet build src\backend
 dotnet test src\backend
 dotnet run --project src\backend\DataverseMigrationTool.Api
 ```
-
