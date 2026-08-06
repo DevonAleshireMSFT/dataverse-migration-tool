@@ -11,6 +11,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
+        services.AddSingleton<IDataverseEndpointResolver, DefaultDataverseEndpointResolver>();
+        services.AddSingleton<IDataverseTokenProvider, DeferredDataverseTokenProvider>();
         services.AddSingleton<IDataverseProvider, ServiceClientDataverseProvider>();
         services.AddSingleton<IMigrationJobStore, InMemoryMigrationJobStore>();
         services.AddSingleton<IValidationEngine, PlaceholderValidationEngine>();
@@ -20,4 +22,3 @@ public static class DependencyInjection
         return services;
     }
 }
-
