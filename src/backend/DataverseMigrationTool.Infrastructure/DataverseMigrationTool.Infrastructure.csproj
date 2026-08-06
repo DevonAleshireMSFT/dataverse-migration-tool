@@ -6,6 +6,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.84.2" />
     <PackageReference Include="Microsoft.PowerPlatform.Dataverse.Client" Version="1.2.26" />
   </ItemGroup>
 
