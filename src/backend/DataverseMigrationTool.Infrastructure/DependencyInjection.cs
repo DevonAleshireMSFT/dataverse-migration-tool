@@ -6,6 +6,7 @@ using DataverseMigrationTool.Infrastructure.Logging;
 using DataverseMigrationTool.Infrastructure.Compare;
 using DataverseMigrationTool.Infrastructure.Metadata;
 using DataverseMigrationTool.Infrastructure.Migration;
+using DataverseMigrationTool.Infrastructure.Solutions;
 using DataverseMigrationTool.Infrastructure.Validation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,7 +28,9 @@ public static class DependencyInjection
         services.AddValidationEngine();
         services.AddEnvironmentComparison();
         services.AddMigrationExecution();
+        services.AddSolutionMigrationOrchestration();
 
         return services;
     }
 }
+
