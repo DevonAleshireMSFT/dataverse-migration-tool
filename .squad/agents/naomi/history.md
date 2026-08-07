@@ -19,3 +19,5 @@
 📌 Team update (2026-07-31T12:40:00-07:00): `pac code init` / `pac code push` are currently blocked for GFIM-DEV in GCC High/UsGovHigh because pac 2.6.4 environment lookup is not sovereign-cloud-aware; track/confirm the fix before registration or solution inclusion — decided by Squad (Coordinator).
 
 📌 Team update (2026-08-05T22:54:08-07:00): Wave 1 delivered Issue #18 Dataverse provider contracts and auth-handoff seam in PR #54.
+
+📌 Team update (2026-08-06T22:24:36-07:00): Wave A delivered Issue #20 metadata discovery read models, discovery service contracts, and TTL/invalidation caching in PR #64.

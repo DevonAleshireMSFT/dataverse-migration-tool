@@ -128,9 +128,23 @@
 **What:** Published repository coding standards that reinforce ADR-0002 clean architecture boundaries and OSS contribution conventions for branch naming, commits, PRs, and local validation.
 **Why:** Contributors need one authoritative, reviewable reference for C# backend, TypeScript/React Code App, testing, logging, formatting, and contribution workflow expectations before v0.4.0 work expands.
 
+### 2026-08-06T22:08:13-07:00: Code App shell routing foundation
+**By:** Alex
+**What:** Adopted `react-router-dom` with hash-based client routing for the Code App shell and standardized the initial major workflow sections as Environments & Connections, Metadata Discovery, Compare & Readiness, Validation, Migration Jobs, and Settings & About.
+**Why:** The operator UI needs stable client-side navigation that works in hosted Code App/static contexts while preserving clean presentation boundaries and leaving future feature work behind typed application service contracts.
+
+### 2026-08-06: Metadata discovery read models and cache boundary
+**By:** Naomi
+**What:** Metadata snapshots are plain Domain records under `ValueObjects/Metadata` with tables, fields, relationships, alternate keys, and choices; discovery is exposed through `IMetadataDiscoveryService` and explicit `MetadataDiscoveryRequest/Result` contracts. Infrastructure owns a provider-backed discovery implementation and an in-memory cache decorator registered by `AddMetadataDiscovery`.
+**Why:** Compare, validation, and UI need SDK-free, serializable metadata shapes. Caching must be keyed by environment plus normalized scope, TTL-bound, thread-safe, and explicitly invalidatable so schema changes or solution imports do not rely on stale metadata.
+
+### 2026-08-06: Validation report model and rule engine surface
+**By:** Prax
+**What:** Validation v1 uses an immutable Domain ValidationReport containing ValidationFindings with stable RuleId/Code, message, category, optional target, and severity values Blocker, Warning, and Info. Reports pass only when no Blocker findings exist and expose severity counts plus blocker/warning/info collections. Application owns injectable IValidationRule and IValidationEngine contracts, and Infrastructure owns the rule-based runner plus the Dataverse connectivity validation rule.
+**Why:** The validation seam needs deterministic, unit-testable rules and a JSON/UI-friendly report shape that clearly separates migration-blocking failures from operator warnings without leaking provider or UI concerns into Domain.
+
 ## Governance
 - All meaningful changes require team consensus
 - Document architectural decisions here
 - Keep history focused on work, decisions focused on direction
-
 

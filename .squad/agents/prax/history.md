@@ -17,3 +17,5 @@
 📌 Team update (2026-07-31T11:32:32-07:00): Your backlog home is Epic #5; Epic #9 is shared cross-team work.
 
 📌 Team update (2026-08-05T22:54:08-07:00): Wave 1 delivered Issue #30 testing strategy and quality gates, including real backend tests, in PR #53.
+
+📌 Team update (2026-08-06T22:24:36-07:00): Wave A delivered Issue #31 validation engine v1 contracts, rule-based runner, connectivity rule, and report model in PR #65.
