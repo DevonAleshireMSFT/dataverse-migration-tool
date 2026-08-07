@@ -22,7 +22,7 @@ public sealed class PlaceholderMigrationEngine(
             request.Mode);
 
         await jobStore.SaveAsync(job, cancellationToken);
-        await operationLogger.RecordAsync(job.Id, "MigrationJobCreated", "Placeholder migration job created.", cancellationToken);
+        await operationLogger.RecordAsync(job.Id, "MigrationJobCreated", "Migration job created.", cancellationToken);
 
         return job;
     }
@@ -30,4 +30,3 @@ public sealed class PlaceholderMigrationEngine(
     public Task<MigrationJob?> GetJobAsync(Guid jobId, CancellationToken cancellationToken = default)
         => jobStore.FindAsync(jobId, cancellationToken);
 }
-
