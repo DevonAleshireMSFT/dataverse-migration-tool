@@ -10,4 +10,10 @@ public interface IMigrationExecutor
         MigrationExecutionOptions? options = null,
         IProgress<MigrationExecutionProgress>? progress = null,
         CancellationToken cancellationToken = default);
+
+    Task<MigrationExecutionResult> ResumeAsync(
+        MigrationJob job,
+        MigrationExecutionOptions? options = null,
+        IProgress<MigrationExecutionProgress>? progress = null,
+        CancellationToken cancellationToken = default);
 }

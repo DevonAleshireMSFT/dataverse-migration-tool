@@ -128,7 +128,22 @@ public sealed class ServiceClientMigrationDataProvider(
 
     private static Entity ToEntity(MigrationRecordWriteRequest record)
     {
-        Entity entity = new(record.TableLogicalName, record.SourceId);
+        Entity entity = new(record.TableLogicalName);
+        if (record.Idempotency.Mode == MigrationIdempotencyMode.AlternateKey && record.Idempotency.KeyValues.Count > 0)
+        {
+            foreach (KeyValuePair<string, object?> key in record.Idempotency.KeyValues)
+            {
+                if (key.Value is not null)
+                {
+                    entity.KeyAttributes[key.Key] = key.Value;
+                }
+            }
+        }
+        else
+        {
+            entity.Id = record.SourceId;
+        }
+
         foreach (KeyValuePair<string, object?> attribute in record.Attributes)
         {
             entity[attribute.Key] = attribute.Value;

@@ -23,9 +23,18 @@ public sealed record MigrationRecordWriteRequest(
     string TableLogicalName,
     Guid SourceId,
     IReadOnlyDictionary<string, object?> Attributes,
-    IReadOnlyDictionary<string, MigrationTargetLookupValue> Lookups);
+    IReadOnlyDictionary<string, MigrationTargetLookupValue> Lookups,
+    MigrationWriteIdempotency Idempotency);
 
 public sealed record MigrationTargetLookupValue(string TargetTableLogicalName, Guid TargetId);
+
+public sealed record MigrationWriteIdempotency(
+    MigrationIdempotencyMode Mode,
+    IReadOnlyDictionary<string, object?> KeyValues)
+{
+    public static MigrationWriteIdempotency SourceRecordId { get; } =
+        new(MigrationIdempotencyMode.SourceRecordId, new Dictionary<string, object?>());
+}
 
 public sealed record MigrationRecordWriteResult(
     string TableLogicalName,

@@ -13,6 +13,7 @@ public sealed record MigrationRun
         UpdatedAt = startedAt;
         Tables = Array.Empty<MigrationRunTableState>();
         Errors = Array.Empty<MigrationExecutionError>();
+        ResumeGuidance = "Run has started. Checkpoint data will be written after each completed batch.";
     }
 
     public Guid RunId { get; init; }
@@ -30,6 +31,10 @@ public sealed record MigrationRun
     public IReadOnlyList<MigrationRunTableState> Tables { get; init; }
 
     public IReadOnlyList<MigrationExecutionError> Errors { get; init; }
+
+    public MigrationCheckpoint? Checkpoint { get; init; }
+
+    public string ResumeGuidance { get; init; }
 
     public MigrationRun WithStatus(MigrationJobStatus status, DateTimeOffset now) => this with
     {

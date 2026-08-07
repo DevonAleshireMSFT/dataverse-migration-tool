@@ -33,4 +33,63 @@ public sealed class JsonFileMigrationRunStoreTests
             }
         }
     }
+
+    [Fact]
+    public async Task SaveCheckpointAsync_persists_checkpoint_and_updates_run_read_model()
+    {
+        string stateDirectory = Path.Combine(AppContext.BaseDirectory, "migration-store-tests", $"{Guid.NewGuid():N}");
+        string statePath = Path.Combine(stateDirectory, "migration-runs.json");
+        try
+        {
+            Guid jobId = Guid.NewGuid();
+            Guid runId = Guid.NewGuid();
+            JsonFileMigrationRunStore store = new(statePath);
+            await store.SaveAsync(new MigrationRun(runId, jobId, MigrationJobStatus.Running, DateTimeOffset.UtcNow));
+            MigrationCheckpoint checkpoint = new MigrationCheckpoint(Guid.NewGuid(), runId, jobId, 0, DateTimeOffset.UtcNow).Advance(
+                [
+                    new MigrationTableCheckpoint(
+                        "account",
+                        MigrationJobStatus.Running,
+                        new MigrationTableIdempotency(MigrationIdempotencyMode.AlternateKey, ["accountnumber"], "Uses alternate key."),
+                        RecordsRead: 2,
+                        RecordsWritten: 1,
+                        RecordsSkipped: 0,
+                        RecordsFailed: 1,
+                        LastCompletedBatchNumber: 1,
+                        LastProcessedOffset: 2,
+                        LastProcessedKey: "source-key",
+                        DeltaToken: "delta",
+                        Batches:
+                        [
+                            new MigrationBatchCheckpoint(1, MigrationCheckpointUnitStatus.RetryPending, Attempt: 2, RecordsRead: 2, RecordsWritten: 1, RecordsSkipped: 0, RecordsFailed: 1)
+                        ],
+                        Records:
+                        [
+                            new MigrationRecordCheckpoint(Guid.NewGuid(), Guid.NewGuid(), MigrationCheckpointUnitStatus.Completed, Attempt: 1, ErrorCode: null)
+                        ])
+                ],
+                [new MigrationExecutionError("account", null, "Timeout", "Redacted failure.", true, "Resume.", 2)],
+                "Resume from account batch 1.",
+                DateTimeOffset.UtcNow);
+
+            await store.SaveCheckpointAsync(checkpoint);
+
+            MigrationCheckpoint? roundTripped = await new JsonFileMigrationRunStore(statePath).FindLatestCheckpointForJobAsync(jobId);
+            MigrationRun? roundTrippedRun = await new JsonFileMigrationRunStore(statePath).FindAsync(runId);
+
+            Assert.NotNull(roundTripped);
+            Assert.Equal(checkpoint.Marker, roundTripped.Marker);
+            Assert.Equal("account", roundTripped.Tables.Single().TableLogicalName);
+            Assert.Equal(MigrationCheckpointUnitStatus.RetryPending, roundTripped.Tables.Single().Batches.Single().Status);
+            Assert.Equal("Resume from account batch 1.", roundTrippedRun!.ResumeGuidance);
+            Assert.NotNull(roundTrippedRun.Checkpoint);
+        }
+        finally
+        {
+            if (Directory.Exists(stateDirectory))
+            {
+                Directory.Delete(stateDirectory, recursive: true);
+            }
+        }
+    }
 }
