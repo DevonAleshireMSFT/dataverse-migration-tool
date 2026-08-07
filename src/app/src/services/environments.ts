@@ -30,6 +30,6 @@ export function getInitialEnvironmentsLandingState(): EnvironmentsLandingState {
     kind: "empty",
     title: "No environments connected yet",
     description:
-      "Start by adding a source and target environment. Connection details will use supported Power Apps APIs as the data layer is introduced.",
+      "Start by adding a source and target environment. Connection details will use supported Power Apps APIs through application service contracts as the data layer is introduced.",
   };
 }
