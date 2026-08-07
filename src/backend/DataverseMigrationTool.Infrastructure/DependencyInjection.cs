@@ -3,6 +3,7 @@ using DataverseMigrationTool.Infrastructure.Dataverse;
 using DataverseMigrationTool.Infrastructure.Dataverse.Auth;
 using DataverseMigrationTool.Infrastructure.Jobs;
 using DataverseMigrationTool.Infrastructure.Logging;
+using DataverseMigrationTool.Infrastructure.Metadata;
 using DataverseMigrationTool.Infrastructure.Validation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,9 +19,11 @@ public static class DependencyInjection
         services.AddSingleton<IDataverseTokenProvider, MsalDataverseTokenProvider>();
         services.AddSingleton<IDataverseProvider, ServiceClientDataverseProvider>();
         services.AddSingleton<IMigrationJobStore, InMemoryMigrationJobStore>();
-        services.AddSingleton<IValidationEngine, PlaceholderValidationEngine>();
         services.AddSingleton<IOperationLogger, MicrosoftExtensionsOperationLogger>();
         services.AddSingleton<IMigrationEngine, PlaceholderMigrationEngine>();
+
+        services.AddMetadataDiscovery();
+        services.AddValidationEngine();
 
         return services;
     }
