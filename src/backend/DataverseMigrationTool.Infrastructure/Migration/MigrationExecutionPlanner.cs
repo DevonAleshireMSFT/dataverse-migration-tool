@@ -26,7 +26,11 @@ public sealed class MigrationExecutionPlanner
             }
         }
 
-        return new MigrationExecutionPlan(TopologicallySort(dependencies, deferredTables));
+        Dictionary<string, MigrationTableIdempotency> idempotencyByTable = metadata.Tables
+            .Where(table => dependencies.ContainsKey(table.LogicalName))
+            .ToDictionary(table => table.LogicalName, ResolveIdempotency, StringComparer.OrdinalIgnoreCase);
+
+        return new MigrationExecutionPlan(TopologicallySort(dependencies, deferredTables, idempotencyByTable));
     }
 
     private static string[] ResolveSelectedTables(ComponentSelection selection, MetadataSnapshot metadata)
@@ -76,7 +80,8 @@ public sealed class MigrationExecutionPlanner
 
     private static List<MigrationTablePlan> TopologicallySort(
         Dictionary<string, HashSet<string>> dependencies,
-        HashSet<string> deferredTables)
+        HashSet<string> deferredTables,
+        Dictionary<string, MigrationTableIdempotency> idempotencyByTable)
     {
         Dictionary<string, HashSet<string>> remaining = dependencies.ToDictionary(
             pair => pair.Key,
@@ -104,7 +109,7 @@ public sealed class MigrationExecutionPlanner
             }
 
             IReadOnlyCollection<string> tableDependencies = dependencies[next].Order(StringComparer.OrdinalIgnoreCase).ToArray();
-            ordered.Add(new MigrationTablePlan(next, tableDependencies, deferredTables.Contains(next)));
+            ordered.Add(new MigrationTablePlan(next, tableDependencies, deferredTables.Contains(next), idempotencyByTable[next]));
             remaining.Remove(next);
 
             foreach (HashSet<string> dependencySet in remaining.Values)
@@ -114,5 +119,26 @@ public sealed class MigrationExecutionPlanner
         }
 
         return ordered;
+    }
+
+    private static MigrationTableIdempotency ResolveIdempotency(TableMetadata table)
+    {
+        AlternateKeyMetadata? alternateKey = table.AlternateKeys
+            .Where(key => key.FieldLogicalNames.Count > 0)
+            .OrderBy(key => key.LogicalName, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+
+        if (alternateKey is not null)
+        {
+            return new MigrationTableIdempotency(
+                MigrationIdempotencyMode.AlternateKey,
+                alternateKey.FieldLogicalNames.ToArray(),
+                $"Uses alternate key {alternateKey.LogicalName}; completed source ids and source-to-target mappings are checkpointed for resume.");
+        }
+
+        return new MigrationTableIdempotency(
+            MigrationIdempotencyMode.SourceRecordId,
+            Array.Empty<string>(),
+            "No alternate key discovered; writes use deterministic source record ids where Dataverse permits it, and completed mappings are checkpointed. Re-run risk is at-least-once if the target cannot honor source ids.");
     }
 }

@@ -24,6 +24,22 @@ public static class MigrationExecutionEndpoints
         })
         .WithName("ExecuteMigrationJob");
 
+        migrations.MapPost("/{jobId:guid}/resume", async (
+            Guid jobId,
+            IMigrationJobStore jobStore,
+            IMigrationExecutor migrationExecutor,
+            CancellationToken cancellationToken) =>
+        {
+            DataverseMigrationTool.Domain.Entities.MigrationJob? job = await jobStore.FindAsync(jobId, cancellationToken);
+            if (job is null)
+            {
+                return Results.NotFound();
+            }
+
+            return Results.Ok(await migrationExecutor.ResumeAsync(job, cancellationToken: cancellationToken));
+        })
+        .WithName("ResumeMigrationJob");
+
         migrations.MapGet("/{jobId:guid}/run", async (
             Guid jobId,
             IMigrationRunStore runStore,

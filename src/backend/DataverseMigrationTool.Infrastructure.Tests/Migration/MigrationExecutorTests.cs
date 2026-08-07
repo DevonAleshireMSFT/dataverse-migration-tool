@@ -95,6 +95,161 @@ public sealed class MigrationExecutorTests
         Assert.Equal(parentTarget, patch.Lookup.TargetId);
     }
 
+    [Fact]
+    public async Task ResumeAsync_skips_completed_table_from_checkpoint()
+    {
+        MigrationJob job = Job("account");
+        Guid sourceId = Guid.NewGuid();
+        InMemoryMigrationRunStore runStore = new();
+        FakeMigrationDataProvider firstProvider = new()
+        {
+            RecordsByTable =
+            {
+                ["account"] =
+                [
+                    new MigrationRecord("account", sourceId, new Dictionary<string, object?>(), Array.Empty<MigrationLookupValue>(), Array.Empty<MigrationManyToManyLink>())
+                ]
+            }
+        };
+        await CreateExecutor(firstProvider, runStore, ValidationReport.Empty, Snapshot("account"))
+            .ExecuteAsync(job, new MigrationExecutionOptions(new MigrationBatchSettings(maxBatchSize: 1, maxRetryAttempts: 0)));
+        FakeMigrationDataProvider resumeProvider = new();
+
+        MigrationExecutionResult result = await CreateExecutor(resumeProvider, runStore, ValidationReport.Empty, Snapshot("account")).ResumeAsync(job);
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(resumeProvider.ExtractedTables);
+        Assert.Equal(1, result.RecordsWritten);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_rerun_with_alternate_key_does_not_create_duplicate()
+    {
+        MigrationJob job = Job("account");
+        Guid sourceId = Guid.NewGuid();
+        Dictionary<string, object?> attributes = new(StringComparer.OrdinalIgnoreCase) { ["accountnumber"] = "A-100" };
+        FakeMigrationDataProvider dataProvider = new()
+        {
+            RecordsByTable =
+            {
+                ["account"] =
+                [
+                    new MigrationRecord("account", sourceId, attributes, Array.Empty<MigrationLookupValue>(), Array.Empty<MigrationManyToManyLink>())
+                ]
+            },
+            UseAlternateKeyStore = true
+        };
+        MetadataSnapshot metadata = Snapshot("account", alternateKeys: [new AlternateKeyMetadata("ak_accountnumber", "ak_accountnumber", "Account Number", ["accountnumber"], IsManaged: false)]);
+
+        await CreateExecutor(dataProvider, new InMemoryMigrationRunStore(), ValidationReport.Empty, metadata).ExecuteAsync(job);
+        await CreateExecutor(dataProvider, new InMemoryMigrationRunStore(), ValidationReport.Empty, metadata).ExecuteAsync(job);
+
+        Assert.Equal(1, dataProvider.CreatedTargetCount);
+        Assert.All(dataProvider.Requests, request => Assert.Equal(MigrationIdempotencyMode.AlternateKey, request.Idempotency.Mode));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_caps_retry_attempts_and_surfaces_terminal_failure()
+    {
+        MigrationJob job = Job("account");
+        Guid sourceId = Guid.NewGuid();
+        FakeMigrationDataProvider dataProvider = new()
+        {
+            RecordsByTable =
+            {
+                ["account"] =
+                [
+                    new MigrationRecord("account", sourceId, new Dictionary<string, object?>(), Array.Empty<MigrationLookupValue>(), Array.Empty<MigrationManyToManyLink>())
+                ]
+            },
+            UpsertHandler = (records, _) =>
+                [new MigrationRecordWriteResult("account", sourceId, null, false, new MigrationExecutionError("account", sourceId, "Timeout", "Transient failure.", true, "Retry.", 0))]
+        };
+        InMemoryMigrationRunStore runStore = new();
+
+        MigrationExecutionResult result = await CreateExecutor(dataProvider, runStore, ValidationReport.Empty, Snapshot("account"))
+            .ExecuteAsync(job, new MigrationExecutionOptions(new MigrationBatchSettings(maxBatchSize: 1, maxRetryAttempts: 1)));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(2, dataProvider.UpsertCallCount);
+        MigrationExecutionError error = Assert.Single(result.Errors);
+        Assert.Equal(2, error.Attempt);
+        Assert.Contains("exhausted", error.OperatorAction, StringComparison.OrdinalIgnoreCase);
+        MigrationCheckpoint checkpoint = (await runStore.FindLatestCheckpointForJobAsync(job.Id))!;
+        Assert.Equal(MigrationCheckpointUnitStatus.TerminalFailed, checkpoint.Tables.Single().Records.Single().Status);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_does_not_retry_terminal_errors()
+    {
+        MigrationJob job = Job("account");
+        Guid sourceId = Guid.NewGuid();
+        FakeMigrationDataProvider dataProvider = new()
+        {
+            RecordsByTable =
+            {
+                ["account"] =
+                [
+                    new MigrationRecord("account", sourceId, new Dictionary<string, object?>(), Array.Empty<MigrationLookupValue>(), Array.Empty<MigrationManyToManyLink>())
+                ]
+            },
+            UpsertHandler = (records, _) =>
+                [new MigrationRecordWriteResult("account", sourceId, null, false, new MigrationExecutionError("account", sourceId, "Validation", "Terminal failure.", false, "Fix data.", 0))]
+        };
+
+        MigrationExecutionResult result = await CreateExecutor(dataProvider, new InMemoryMigrationRunStore(), ValidationReport.Empty, Snapshot("account"))
+            .ExecuteAsync(job, new MigrationExecutionOptions(new MigrationBatchSettings(maxBatchSize: 1, maxRetryAttempts: 3)));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(1, dataProvider.UpsertCallCount);
+        Assert.False(Assert.Single(result.Errors).Retryable);
+    }
+
+    [Fact]
+    public async Task ResumeAsync_after_interruption_replays_at_most_uncheckpointed_batch()
+    {
+        MigrationJob job = Job("account");
+        Guid first = Guid.NewGuid();
+        Guid second = Guid.NewGuid();
+        InMemoryMigrationRunStore runStore = new();
+        FakeMigrationDataProvider interruptedProvider = new()
+        {
+            RecordsByTable =
+            {
+                ["account"] =
+                [
+                    new MigrationRecord("account", first, new Dictionary<string, object?>(), Array.Empty<MigrationLookupValue>(), Array.Empty<MigrationManyToManyLink>()),
+                    new MigrationRecord("account", second, new Dictionary<string, object?>(), Array.Empty<MigrationLookupValue>(), Array.Empty<MigrationManyToManyLink>())
+                ]
+            },
+            ThrowOnUpsertCall = 2
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => CreateExecutor(interruptedProvider, runStore, ValidationReport.Empty, Snapshot("account"))
+            .ExecuteAsync(job, new MigrationExecutionOptions(new MigrationBatchSettings(maxBatchSize: 1, maxRetryAttempts: 0))));
+        MigrationCheckpoint checkpoint = (await runStore.FindLatestCheckpointForJobAsync(job.Id))!;
+        Assert.Equal(first, checkpoint.Tables.Single().Records.Single().SourceId);
+
+        FakeMigrationDataProvider resumeProvider = new()
+        {
+            RecordsByTable =
+            {
+                ["account"] =
+                [
+                    new MigrationRecord("account", first, new Dictionary<string, object?>(), Array.Empty<MigrationLookupValue>(), Array.Empty<MigrationManyToManyLink>()),
+                    new MigrationRecord("account", second, new Dictionary<string, object?>(), Array.Empty<MigrationLookupValue>(), Array.Empty<MigrationManyToManyLink>())
+                ]
+            }
+        };
+
+        MigrationExecutionResult result = await CreateExecutor(resumeProvider, runStore, ValidationReport.Empty, Snapshot("account"))
+            .ResumeAsync(job, new MigrationExecutionOptions(new MigrationBatchSettings(maxBatchSize: 1, maxRetryAttempts: 0)));
+
+        Assert.True(result.Succeeded);
+        Assert.Single(resumeProvider.Requests);
+        Assert.Equal(second, resumeProvider.Requests.Single().SourceId);
+    }
+
     private static MigrationExecutor CreateExecutor(
         FakeMigrationDataProvider dataProvider,
         IMigrationRunStore runStore,
@@ -119,11 +274,14 @@ public sealed class MigrationExecutorTests
         new ComponentSelection(true, false, tables, Array.Empty<string>()),
         MigrationMode.Full);
 
-    private static MetadataSnapshot Snapshot(string table, IReadOnlyList<RelationshipMetadata>? relationships = null) => new(
+    private static MetadataSnapshot Snapshot(
+        string table,
+        IReadOnlyList<RelationshipMetadata>? relationships = null,
+        IReadOnlyList<AlternateKeyMetadata>? alternateKeys = null) => new(
         new EnvironmentProfile("source", new Uri("https://source.example.crm.dynamics.com"), Guid.NewGuid(), DataverseCloud.Public),
         new MetadataDiscoveryScope([table]),
         DateTimeOffset.UtcNow,
-        [new TableMetadata(table, table, table, null, true, false, false, Array.Empty<FieldMetadata>(), relationships ?? Array.Empty<RelationshipMetadata>(), Array.Empty<AlternateKeyMetadata>())],
+        [new TableMetadata(table, table, table, null, true, false, false, Array.Empty<FieldMetadata>(), relationships ?? Array.Empty<RelationshipMetadata>(), alternateKeys ?? Array.Empty<AlternateKeyMetadata>())],
         Array.Empty<ChoiceMetadata>());
 
     private sealed class FakeValidationEngine(ValidationReport report) : IValidationEngine
@@ -152,6 +310,14 @@ public sealed class MigrationExecutorTests
 
         public List<MigrationRelationshipPatchRequest> Patches { get; } = [];
 
+        public List<MigrationRecordWriteRequest> Requests { get; } = [];
+
+        public bool UseAlternateKeyStore { get; set; }
+
+        public int CreatedTargetCount { get; private set; }
+
+        public int? ThrowOnUpsertCall { get; set; }
+
         public int UpsertCallCount { get; private set; }
 
         public Func<IReadOnlyList<MigrationRecordWriteRequest>, int, IReadOnlyList<MigrationRecordWriteResult>>? UpsertHandler { get; set; }
@@ -170,9 +336,34 @@ public sealed class MigrationExecutorTests
         public Task<IReadOnlyList<MigrationRecordWriteResult>> UpsertBatchAsync(EnvironmentProfile target, IReadOnlyList<MigrationRecordWriteRequest> records, CancellationToken cancellationToken = default)
         {
             UpsertCallCount++;
+            if (ThrowOnUpsertCall == UpsertCallCount)
+            {
+                throw new InvalidOperationException("Simulated interruption.");
+            }
+
+            Requests.AddRange(records);
             if (UpsertHandler is not null)
             {
                 return Task.FromResult(UpsertHandler(records, UpsertCallCount));
+            }
+
+            if (UseAlternateKeyStore)
+            {
+                IReadOnlyList<MigrationRecordWriteResult> keyedResults = records
+                    .Select(record =>
+                    {
+                        string key = string.Join("|", record.Idempotency.KeyValues.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).Select(pair => $"{pair.Key}:{pair.Value}"));
+                        if (!TargetIds.TryGetValue(GuidFromKey(key), out Guid targetId))
+                        {
+                            targetId = Guid.NewGuid();
+                            TargetIds[GuidFromKey(key)] = targetId;
+                            CreatedTargetCount++;
+                        }
+
+                        return new MigrationRecordWriteResult(record.TableLogicalName, record.SourceId, targetId, true, null);
+                    })
+                    .ToArray();
+                return Task.FromResult(keyedResults);
             }
 
             IReadOnlyList<MigrationRecordWriteResult> results = records
@@ -185,6 +376,14 @@ public sealed class MigrationExecutorTests
         {
             Patches.AddRange(patches);
             return Task.FromResult<IReadOnlyList<MigrationExecutionError>>(Array.Empty<MigrationExecutionError>());
+        }
+
+        private static Guid GuidFromKey(string key)
+        {
+            byte[] bytes = new byte[16];
+            byte[] source = System.Text.Encoding.UTF8.GetBytes(key);
+            Array.Copy(source, bytes, Math.Min(bytes.Length, source.Length));
+            return new Guid(bytes);
         }
     }
 }

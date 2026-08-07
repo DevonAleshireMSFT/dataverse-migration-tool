@@ -9,4 +9,8 @@ public interface IMigrationRunStore
     Task<MigrationRun?> FindAsync(Guid runId, CancellationToken cancellationToken = default);
 
     Task<MigrationRun?> FindLatestForJobAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    Task SaveCheckpointAsync(MigrationCheckpoint checkpoint, CancellationToken cancellationToken = default);
+
+    Task<MigrationCheckpoint?> FindLatestCheckpointForJobAsync(Guid jobId, CancellationToken cancellationToken = default);
 }
