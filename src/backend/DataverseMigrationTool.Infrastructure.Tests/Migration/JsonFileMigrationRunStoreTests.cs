@@ -92,4 +92,52 @@ public sealed class JsonFileMigrationRunStoreTests
             }
         }
     }
+
+    [Fact]
+    public async Task SaveRollbackGuidanceAsync_persists_guidance_for_later_store_instance()
+    {
+        string stateDirectory = Path.Combine(AppContext.BaseDirectory, "migration-store-tests", $"{Guid.NewGuid():N}");
+        string statePath = Path.Combine(stateDirectory, "migration-runs.json");
+        try
+        {
+            Guid jobId = Guid.NewGuid();
+            Guid runId = Guid.NewGuid();
+            RollbackGuidance guidance = new(
+                Guid.NewGuid(),
+                jobId,
+                runId,
+                DateTimeOffset.UtcNow,
+                "Rollback guidance.",
+                [
+                    new RollbackAction(
+                        "account",
+                        Guid.NewGuid(),
+                        Guid.NewGuid(),
+                        MigrationCheckpointUnitStatus.Completed,
+                        MigrationRecordWriteDisposition.Created,
+                        RollbackReversibility.ReversibleViaSupportedApi,
+                        "Dataverse Delete",
+                        "Delete the created record.",
+                        Array.Empty<RollbackArtifactReference>())
+                ],
+                [
+                    new RollbackArtifactReference(RollbackArtifactKind.Checkpoint, "checkpoint", "Checkpoint artifact.")
+                ]);
+
+            await new JsonFileMigrationRunStore(statePath).SaveRollbackGuidanceAsync(guidance);
+
+            RollbackGuidance? roundTripped = await new JsonFileMigrationRunStore(statePath).FindLatestRollbackGuidanceForJobAsync(jobId);
+
+            Assert.NotNull(roundTripped);
+            Assert.Equal(guidance.GuidanceId, roundTripped.GuidanceId);
+            Assert.Equal(RollbackReversibility.ReversibleViaSupportedApi, roundTripped.Actions.Single().Reversibility);
+        }
+        finally
+        {
+            if (Directory.Exists(stateDirectory))
+            {
+                Directory.Delete(stateDirectory, recursive: true);
+            }
+        }
+    }
 }

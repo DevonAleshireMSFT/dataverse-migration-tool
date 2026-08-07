@@ -10,6 +10,7 @@ public sealed class JsonFileMigrationRunStore : IMigrationRunStore
     private readonly object gate = new();
     private readonly string filePath;
     private readonly string checkpointFilePath;
+    private readonly string rollbackGuidanceFilePath;
 
     public JsonFileMigrationRunStore()
         : this(Path.Combine(AppContext.BaseDirectory, "migration-state", "migration-runs.json"))
@@ -22,6 +23,7 @@ public sealed class JsonFileMigrationRunStore : IMigrationRunStore
             ? throw new ArgumentException("Run store file path must not be empty.", nameof(filePath))
             : filePath;
         checkpointFilePath = Path.Combine(Path.GetDirectoryName(this.filePath)!, $"{Path.GetFileNameWithoutExtension(this.filePath)}-checkpoints.json");
+        rollbackGuidanceFilePath = Path.Combine(Path.GetDirectoryName(this.filePath)!, $"{Path.GetFileNameWithoutExtension(this.filePath)}-rollback-guidance.json");
     }
 
     public Task SaveAsync(MigrationRun run, CancellationToken cancellationToken = default)
@@ -101,6 +103,35 @@ public sealed class JsonFileMigrationRunStore : IMigrationRunStore
         }
     }
 
+    public Task SaveRollbackGuidanceAsync(RollbackGuidance guidance, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(guidance);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (gate)
+        {
+            Dictionary<Guid, RollbackGuidance> guidanceById = ReadAllRollbackGuidance();
+            guidanceById[guidance.GuidanceId] = guidance;
+            Directory.CreateDirectory(Path.GetDirectoryName(rollbackGuidanceFilePath)!);
+            File.WriteAllText(rollbackGuidanceFilePath, JsonSerializer.Serialize(guidanceById.Values.OrderBy(value => value.GeneratedAt), SerializerOptions));
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task<RollbackGuidance?> FindLatestRollbackGuidanceForJobAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (gate)
+        {
+            RollbackGuidance? guidance = ReadAllRollbackGuidance().Values
+                .Where(candidate => candidate.JobId == jobId)
+                .OrderByDescending(candidate => candidate.GeneratedAt)
+                .FirstOrDefault();
+            return Task.FromResult(guidance);
+        }
+    }
+
     private Dictionary<Guid, MigrationRun> ReadAll()
     {
         if (!File.Exists(filePath))
@@ -133,5 +164,22 @@ public sealed class JsonFileMigrationRunStore : IMigrationRunStore
 
         MigrationCheckpoint[] checkpoints = JsonSerializer.Deserialize<MigrationCheckpoint[]>(json, SerializerOptions) ?? [];
         return checkpoints.ToDictionary(checkpoint => checkpoint.CheckpointId);
+    }
+
+    private Dictionary<Guid, RollbackGuidance> ReadAllRollbackGuidance()
+    {
+        if (!File.Exists(rollbackGuidanceFilePath))
+        {
+            return [];
+        }
+
+        string json = File.ReadAllText(rollbackGuidanceFilePath);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return [];
+        }
+
+        RollbackGuidance[] guidance = JsonSerializer.Deserialize<RollbackGuidance[]>(json, SerializerOptions) ?? [];
+        return guidance.ToDictionary(item => item.GuidanceId);
     }
 }

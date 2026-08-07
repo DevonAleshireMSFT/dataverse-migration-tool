@@ -12,6 +12,7 @@ public static class MigrationExecutionServiceCollectionExtensions
         services.AddSingleton<MigrationRecordTransformer>();
         services.AddSingleton<IMigrationRunStore, JsonFileMigrationRunStore>();
         services.AddSingleton<IMigrationDataProvider, ServiceClientMigrationDataProvider>();
+        services.AddSingleton<IRollbackGuidanceGenerator, RollbackGuidanceGenerator>();
         services.AddSingleton<IMigrationExecutor, MigrationExecutor>();
         services.AddSingleton<IMigrationEngine, PlaceholderMigrationEngine>();
         return services;

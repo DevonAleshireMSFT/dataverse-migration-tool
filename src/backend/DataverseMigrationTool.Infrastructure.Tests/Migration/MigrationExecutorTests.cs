@@ -51,9 +51,10 @@ public sealed class MigrationExecutorTests
             },
             UpsertHandler = (records, call) => call == 1
                 ? [new MigrationRecordWriteResult("account", sourceId, null, false, new MigrationExecutionError("account", sourceId, "Timeout", "Transient failure.", true, "Retry.", 0))]
-                : [new MigrationRecordWriteResult("account", sourceId, targetId, true, null)]
+                : [new MigrationRecordWriteResult("account", sourceId, targetId, true, null, MigrationRecordWriteDisposition.Created)]
         };
-        MigrationExecutor executor = CreateExecutor(dataProvider, new InMemoryMigrationRunStore(), ValidationReport.Empty, Snapshot("account"));
+        InMemoryMigrationRunStore runStore = new();
+        MigrationExecutor executor = CreateExecutor(dataProvider, runStore, ValidationReport.Empty, Snapshot("account"));
 
         MigrationExecutionResult result = await executor.ExecuteAsync(job, new MigrationExecutionOptions(new MigrationBatchSettings(maxBatchSize: 1, maxRetryAttempts: 1)));
 
@@ -62,6 +63,8 @@ public sealed class MigrationExecutorTests
         Assert.Equal(1, result.RecordsWritten);
         Assert.Empty(result.Errors);
         Assert.Equal(MigrationJobStatus.Completed, job.Status);
+        RollbackGuidance guidance = (await runStore.FindLatestRollbackGuidanceForJobAsync(job.Id))!;
+        Assert.Equal(RollbackReversibility.ReversibleViaSupportedApi, Assert.Single(guidance.Actions).Reversibility);
     }
 
     [Fact]
@@ -263,6 +266,7 @@ public sealed class MigrationExecutorTests
             runStore,
             new InMemoryMigrationJobStore(),
             new FakeOperationLogger(),
+            new RollbackGuidanceGenerator(),
             new MigrationExecutionPlanner(),
             new MigrationRecordTransformer());
     }
@@ -353,21 +357,28 @@ public sealed class MigrationExecutorTests
                     .Select(record =>
                     {
                         string key = string.Join("|", record.Idempotency.KeyValues.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).Select(pair => $"{pair.Key}:{pair.Value}"));
-                        if (!TargetIds.TryGetValue(GuidFromKey(key), out Guid targetId))
+                        bool created = !TargetIds.TryGetValue(GuidFromKey(key), out Guid targetId);
+                        if (created)
                         {
                             targetId = Guid.NewGuid();
                             TargetIds[GuidFromKey(key)] = targetId;
                             CreatedTargetCount++;
                         }
 
-                        return new MigrationRecordWriteResult(record.TableLogicalName, record.SourceId, targetId, true, null);
+                        return new MigrationRecordWriteResult(
+                            record.TableLogicalName,
+                            record.SourceId,
+                            targetId,
+                            true,
+                            null,
+                            created ? MigrationRecordWriteDisposition.Created : MigrationRecordWriteDisposition.Updated);
                     })
                     .ToArray();
                 return Task.FromResult(keyedResults);
             }
 
             IReadOnlyList<MigrationRecordWriteResult> results = records
-                .Select(record => new MigrationRecordWriteResult(record.TableLogicalName, record.SourceId, TargetIds.GetValueOrDefault(record.SourceId, record.SourceId), true, null))
+                .Select(record => new MigrationRecordWriteResult(record.TableLogicalName, record.SourceId, TargetIds.GetValueOrDefault(record.SourceId, record.SourceId), true, null, MigrationRecordWriteDisposition.Created))
                 .ToArray();
             return Task.FromResult(results);
         }

@@ -78,7 +78,8 @@ public sealed record MigrationRecordCheckpoint(
     Guid? TargetId,
     MigrationCheckpointUnitStatus Status,
     int Attempt,
-    string? ErrorCode);
+    string? ErrorCode,
+    MigrationRecordWriteDisposition Disposition = MigrationRecordWriteDisposition.Unknown);
 
 public enum MigrationCheckpointUnitStatus
 {

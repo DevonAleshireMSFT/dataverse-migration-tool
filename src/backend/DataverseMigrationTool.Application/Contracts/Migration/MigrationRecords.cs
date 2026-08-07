@@ -41,7 +41,15 @@ public sealed record MigrationRecordWriteResult(
     Guid SourceId,
     Guid? TargetId,
     bool Succeeded,
-    MigrationExecutionError? Error);
+    MigrationExecutionError? Error,
+    MigrationRecordWriteDisposition Disposition = MigrationRecordWriteDisposition.Unknown);
+
+public enum MigrationRecordWriteDisposition
+{
+    Unknown,
+    Created,
+    Updated
+}
 
 public sealed record DeferredRelationshipPatch(
     string TableLogicalName,

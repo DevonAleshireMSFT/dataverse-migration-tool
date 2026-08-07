@@ -15,6 +15,7 @@ public sealed class MigrationExecutor(
     IMigrationRunStore runStore,
     IMigrationJobStore jobStore,
     IOperationLogger operationLogger,
+    IRollbackGuidanceGenerator rollbackGuidanceGenerator,
     MigrationExecutionPlanner planner,
     MigrationRecordTransformer transformer) : IMigrationExecutor
 {
@@ -202,7 +203,7 @@ public sealed class MigrationExecutor(
 
                     errors.RemoveAll(error => error.TableLogicalName.Equals(result.TableLogicalName, StringComparison.OrdinalIgnoreCase) && error.SourceRecordId == result.SourceId);
                     idMap.Record(result.TableLogicalName, result.SourceId, targetId);
-                    checkpointState.UpsertRecord(table, result.SourceId, targetId, MigrationCheckpointUnitStatus.Completed, attempt, null);
+                    checkpointState.UpsertRecord(table, result.SourceId, targetId, MigrationCheckpointUnitStatus.Completed, attempt, null, result.Disposition);
                     continue;
                 }
 
@@ -212,7 +213,7 @@ public sealed class MigrationExecutor(
                 if (canRetry && original is not null)
                 {
                     retryableRecords.Add(original);
-                    checkpointState.UpsertRecord(table, result.SourceId, null, MigrationCheckpointUnitStatus.RetryPending, attempt, error.Code);
+                    checkpointState.UpsertRecord(table, result.SourceId, null, MigrationCheckpointUnitStatus.RetryPending, attempt, error.Code, MigrationRecordWriteDisposition.Unknown);
                     continue;
                 }
 
@@ -225,7 +226,7 @@ public sealed class MigrationExecutor(
                         ? "Retry attempts are exhausted. Resume after fixing the transient cause; completed records will be skipped."
                         : error.OperatorAction
                 });
-                checkpointState.UpsertRecord(table, result.SourceId, null, MigrationCheckpointUnitStatus.TerminalFailed, attempt, error.Code);
+                checkpointState.UpsertRecord(table, result.SourceId, null, MigrationCheckpointUnitStatus.TerminalFailed, attempt, error.Code, MigrationRecordWriteDisposition.Unknown);
             }
 
             pending = retryableRecords;
@@ -297,6 +298,12 @@ public sealed class MigrationExecutor(
 
         await runStore.SaveAsync(updatedRun, cancellationToken);
         await runStore.SaveCheckpointAsync(checkpoint, cancellationToken);
+        if (status is MigrationJobStatus.Completed or MigrationJobStatus.Failed or MigrationJobStatus.Cancelled)
+        {
+            RollbackGuidance rollbackGuidance = rollbackGuidanceGenerator.Generate(updatedRun, checkpoint, DateTimeOffset.UtcNow);
+            await runStore.SaveRollbackGuidanceAsync(rollbackGuidance, cancellationToken);
+        }
+
         checkpointState.Marker = checkpoint.Marker;
     }
 
@@ -427,9 +434,9 @@ public sealed class MigrationExecutor(
             }
         }
 
-        public void UpsertRecord(MigrationTablePlan table, Guid sourceId, Guid? targetId, MigrationCheckpointUnitStatus status, int attempt, string? errorCode)
+        public void UpsertRecord(MigrationTablePlan table, Guid sourceId, Guid? targetId, MigrationCheckpointUnitStatus status, int attempt, string? errorCode, MigrationRecordWriteDisposition disposition)
         {
-            records[(Normalize(table.TableLogicalName), sourceId)] = new MigrationRecordCheckpoint(sourceId, targetId, status, attempt, errorCode);
+            records[(Normalize(table.TableLogicalName), sourceId)] = new MigrationRecordCheckpoint(sourceId, targetId, status, attempt, errorCode, disposition);
         }
 
         public void UpsertBatch(MigrationTablePlan table, TableCounters counters, int batchNumber, int batchSize, int failed, int attempt)

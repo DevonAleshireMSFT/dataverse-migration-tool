@@ -13,4 +13,8 @@ public interface IMigrationRunStore
     Task SaveCheckpointAsync(MigrationCheckpoint checkpoint, CancellationToken cancellationToken = default);
 
     Task<MigrationCheckpoint?> FindLatestCheckpointForJobAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    Task SaveRollbackGuidanceAsync(RollbackGuidance guidance, CancellationToken cancellationToken = default);
+
+    Task<RollbackGuidance?> FindLatestRollbackGuidanceForJobAsync(Guid jobId, CancellationToken cancellationToken = default);
 }

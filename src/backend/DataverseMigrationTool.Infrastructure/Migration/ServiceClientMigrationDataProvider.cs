@@ -63,7 +63,10 @@ public sealed class ServiceClientMigrationDataProvider(
             {
                 Entity entity = ToEntity(record);
                 UpsertResponse response = (UpsertResponse)client.Execute(new UpsertRequest { Target = entity });
-                results.Add(new MigrationRecordWriteResult(record.TableLogicalName, record.SourceId, response.Target?.Id ?? entity.Id, true, null));
+                MigrationRecordWriteDisposition disposition = response.RecordCreated
+                    ? MigrationRecordWriteDisposition.Created
+                    : MigrationRecordWriteDisposition.Updated;
+                results.Add(new MigrationRecordWriteResult(record.TableLogicalName, record.SourceId, response.Target?.Id ?? entity.Id, true, null, disposition));
             }
             catch (Exception ex) when (ex is InvalidOperationException or TimeoutException or System.ServiceModel.FaultException<OrganizationServiceFault>)
             {

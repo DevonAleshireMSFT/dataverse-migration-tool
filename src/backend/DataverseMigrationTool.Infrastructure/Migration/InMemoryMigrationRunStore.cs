@@ -8,6 +8,7 @@ public sealed class InMemoryMigrationRunStore : IMigrationRunStore
 {
     private readonly ConcurrentDictionary<Guid, MigrationRun> runs = new();
     private readonly ConcurrentDictionary<Guid, MigrationCheckpoint> checkpoints = new();
+    private readonly ConcurrentDictionary<Guid, RollbackGuidance> rollbackGuidance = new();
 
     public Task SaveAsync(MigrationRun run, CancellationToken cancellationToken = default)
     {
@@ -53,5 +54,22 @@ public sealed class InMemoryMigrationRunStore : IMigrationRunStore
             .FirstOrDefault();
 
         return Task.FromResult(checkpoint);
+    }
+
+    public Task SaveRollbackGuidanceAsync(RollbackGuidance guidance, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(guidance);
+        rollbackGuidance[guidance.GuidanceId] = guidance;
+        return Task.CompletedTask;
+    }
+
+    public Task<RollbackGuidance?> FindLatestRollbackGuidanceForJobAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        RollbackGuidance? guidance = rollbackGuidance.Values
+            .Where(candidate => candidate.JobId == jobId)
+            .OrderByDescending(candidate => candidate.GeneratedAt)
+            .FirstOrDefault();
+
+        return Task.FromResult(guidance);
     }
 }
