@@ -21,3 +21,5 @@
 📌 Team update (2026-08-05T22:54:08-07:00): Wave 1 delivered Issue #18 Dataverse provider contracts and auth-handoff seam in PR #54.
 
 📌 Team update (2026-08-06T22:24:36-07:00): Wave A delivered Issue #20 metadata discovery read models, discovery service contracts, and TTL/invalidation caching in PR #64.
+
+📌 Team update (2026-08-06T22:53:26-07:00): Wave B delivered Issue #21 environment compare and migration readiness report in PR #66.

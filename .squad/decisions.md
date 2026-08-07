@@ -143,8 +143,17 @@
 **What:** Validation v1 uses an immutable Domain ValidationReport containing ValidationFindings with stable RuleId/Code, message, category, optional target, and severity values Blocker, Warning, and Info. Reports pass only when no Blocker findings exist and expose severity counts plus blocker/warning/info collections. Application owns injectable IValidationRule and IValidationEngine contracts, and Infrastructure owns the rule-based runner plus the Dataverse connectivity validation rule.
 **Why:** The validation seam needs deterministic, unit-testable rules and a JSON/UI-friendly report shape that clearly separates migration-blocking failures from operator warnings without leaking provider or UI concerns into Domain.
 
+### 2026-08-06: Environment comparison readiness model
+**By:** Naomi
+**What:** Environment comparison now treats missing source tables/fields, field type mismatches, stricter target required levels, relationship gaps, missing choices/options, and lookup target mismatches as blockers; alternate-key gaps, looser required levels, and option label differences as warnings; and target-only tables/fields/options/choices as informational. The report exposes severity counts and table-level migration scope readiness so migration selection can include only blocker-free source tables.
+**Why:** Dataverse data migration readiness must distinguish schema incompatibilities that can break writes from operator-actionable warnings and harmless target extras while reusing the shared ValidationSeverity model for validation/report consistency.
+
+### 2026-08-06: Migration execution pipeline and run-state seam
+**By:** Amos
+**What:** Added a separate `IMigrationExecutor` and `IMigrationRunStore` seam for full data migration execution. Execution planning uses metadata relationships to order parents before children, remaps source-to-target ids during load, and defers unresolved/self-referential lookups to a second relationship patch pass. Run state and redacted progress are persisted through the run store and operation logger; record payload values are not logged.
+**Why:** Migration execution has to survive failure and retry without hiding state in the process. Keeping execution, data-provider, and run-state contracts in Application and implementations in Infrastructure preserves ADR-0002 boundaries while giving the coordinator a safe DI/API hook to wire.
+
 ## Governance
 - All meaningful changes require team consensus
 - Document architectural decisions here
 - Keep history focused on work, decisions focused on direction
-
