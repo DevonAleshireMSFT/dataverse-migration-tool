@@ -3,7 +3,9 @@ using DataverseMigrationTool.Infrastructure.Dataverse;
 using DataverseMigrationTool.Infrastructure.Dataverse.Auth;
 using DataverseMigrationTool.Infrastructure.Jobs;
 using DataverseMigrationTool.Infrastructure.Logging;
+using DataverseMigrationTool.Infrastructure.Compare;
 using DataverseMigrationTool.Infrastructure.Metadata;
+using DataverseMigrationTool.Infrastructure.Migration;
 using DataverseMigrationTool.Infrastructure.Validation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,10 +22,11 @@ public static class DependencyInjection
         services.AddSingleton<IDataverseProvider, ServiceClientDataverseProvider>();
         services.AddSingleton<IMigrationJobStore, InMemoryMigrationJobStore>();
         services.AddSingleton<IOperationLogger, MicrosoftExtensionsOperationLogger>();
-        services.AddSingleton<IMigrationEngine, PlaceholderMigrationEngine>();
 
         services.AddMetadataDiscovery();
         services.AddValidationEngine();
+        services.AddEnvironmentComparison();
+        services.AddMigrationExecution();
 
         return services;
     }

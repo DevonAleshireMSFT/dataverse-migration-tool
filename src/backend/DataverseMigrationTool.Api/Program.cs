@@ -1,5 +1,6 @@
 using DataverseMigrationTool.Application.Contracts;
 using DataverseMigrationTool.Application.Ports;
+using DataverseMigrationTool.Api;
 using DataverseMigrationTool.Infrastructure;
 using DataverseMigrationTool.Infrastructure.Configuration;
 
@@ -50,5 +51,8 @@ migrations.MapGet("/{jobId:guid}", async (
     return job is null ? Results.NotFound() : Results.Ok(job);
 })
 .WithName("GetMigrationJob");
+
+app.MapCompareEndpoints();
+app.MapMigrationExecutionEndpoints();
 
 app.Run();
