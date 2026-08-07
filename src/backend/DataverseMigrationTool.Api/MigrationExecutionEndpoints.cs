@@ -1,4 +1,5 @@
 using DataverseMigrationTool.Application.Ports;
+using DataverseMigrationTool.Application.Contracts.Migration;
 
 namespace DataverseMigrationTool.Api;
 
@@ -51,5 +52,30 @@ public static class MigrationExecutionEndpoints
             return run is null ? Results.NotFound() : Results.Ok(run);
         })
         .WithName("GetMigrationRun");
+
+        migrations.MapGet("/{jobId:guid}/rollback-guidance", async (
+            Guid jobId,
+            IMigrationRunStore runStore,
+            IRollbackGuidanceGenerator rollbackGuidanceGenerator,
+            CancellationToken cancellationToken) =>
+        {
+            RollbackGuidance? guidance = await runStore.FindLatestRollbackGuidanceForJobAsync(jobId, cancellationToken);
+            if (guidance is not null)
+            {
+                return Results.Ok(guidance);
+            }
+
+            MigrationRun? run = await runStore.FindLatestForJobAsync(jobId, cancellationToken);
+            MigrationCheckpoint? checkpoint = await runStore.FindLatestCheckpointForJobAsync(jobId, cancellationToken);
+            if (run is null || checkpoint is null)
+            {
+                return Results.NotFound();
+            }
+
+            guidance = rollbackGuidanceGenerator.Generate(run, checkpoint, DateTimeOffset.UtcNow);
+            await runStore.SaveRollbackGuidanceAsync(guidance, cancellationToken);
+            return Results.Ok(guidance);
+        })
+        .WithName("GetMigrationRollbackGuidance");
     }
 }
