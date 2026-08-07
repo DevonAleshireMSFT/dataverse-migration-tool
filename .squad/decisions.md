@@ -1,48 +1,18 @@
 # Squad Decisions
 
+> Older decisions are archived under `.squad/decisions/archive/` to keep this live file focused.
+
 ## Active Decisions
-
-### 2026-07-30T15:52:36-07:00: Team casting universe
-
-**By:** Coordinator
-
-**What:** The Squad team for this repository is cast from The Expanse universe: Holden, Naomi, Amos, Alex, Bobbie, Drummer, Prax, and Monica.
-
-**Why:** The theme gives the team a coherent set of recognizable roles and collaboration styles for future routing.
-
-### 2026-07-30T15:52:36-07:00: Public MIT open-source repository
-
-**By:** Coordinator, Drummer
-
-**What:** DevonAleshireMSFT/dataverse-migration-tool is a PUBLIC GitHub repository under the MIT license.
-
-**Why:** The project is intended to be open source, and the MIT license establishes permissive reuse terms.
-
-### 2026-07-30T15:52:36-07:00: @copilot auto-assign enabled
-
-**By:** Coordinator
-
-**What:** @copilot is an autonomous coding-agent member with auto-assign enabled via team.md `copilot-auto-assign: true` and routing entries.
-
-**Why:** Suitable issues can be picked up autonomously by @copilot under the Squad routing and capability rules.
-
-### 2026-07-31: Initial backlog epic structure and release mapping
-**By:** Holden
-**What:** Structured the initial GitHub backlog around 9 epics: Project Foundations & Governance; Dataverse Connectivity & Environment Intelligence; Migration Engine & Data Movement; Solution Component Migration; Validation, Testing & Quality Gates; Code App UI & Operator Workflow; Security, Identity & Government Readiness; DevOps, Release & Documentation Operations; Extensibility, Configuration & Observability. Mapped foundations to v0.4.0, core provider/migration/UI/validation to v0.5.0, advanced migration/solution/UI work to v0.6.0, and hardening/compliance/release/docs/plugins to v1.0.0.
-**Why:** This keeps the backlog at Devon's requested epics + features + spikes depth while preserving clean architecture ownership and Microsoft-supported API guardrails before user-story decomposition.
-
 
 ### 2026-07-31: Dataverse solution publisher and source layout
 **By:** Naomi
 **What:** Recommend publisher display name `Dataverse Migration Tool`, unique name `DataverseMigrationTool`, customization prefix `dvmig`, option value prefix `10004`; solution unique name `DataverseMigrationTool`, display name `Dataverse Migration Tool`, starting version `0.4.0`; unpacked solution source at `src\solutions\DataverseMigrationTool\` with exported ZIP staging under `artifacts\solutions\`.
 **Why:** The publisher prefix permanently stamps Dataverse schema names, so the OSS/government-ready solution needs a neutral, project-owned prefix before components are created. Keeping unpacked solution XML separate from future .NET projects preserves clean architecture ownership and enables supported `pac solution` source-control workflows.
 
-
 ### 2026-07-31: Code App presentation shell initialized
 **By:** Alex
 **What:** The Power Platform Code App presentation layer lives in `src/app`, uses `pac code` as the CLI workflow, Fluent UI v9 for UI controls and theming, and strict TypeScript plus Prettier for quality gates. Registration was attempted against GFIM-DEV but `pac code init` reported that environment `a1e07a26-233f-eabc-be32-c148767c943d` was not found, so no metadata file was produced and the app has not been pushed or added to the solution yet.
 **Why:** This gives the UI a Microsoft-supported Code App baseline while preserving review before any environment push or solution inclusion.
-
 
 ### 2026-07-31T12:40:00-07:00: Local-first Code App development for sovereign cloud
 **By:** Squad (Coordinator), for Devon Aleshire
@@ -110,9 +80,6 @@
 
 **Why:** This sets a high, defensible engineering bar (sovereign-ready, secure-by-default) appropriate for an early-stage public OSS project, without over-committing to a certification/audit program that is not yet resourced. The posture is explicitly upgradeable later via a superseding ADR once a certification target is funded.
 
-
-
-
 ### 2026-08-06T15:10:04-07:00: Backlog taxonomy & release roadmap
 **By:** Holden
 **What:** Published the backlog taxonomy and release roadmap in `docs/backlog-and-roadmap.md`, using the current GitHub issue labels and the nine-epic structure from the initial backlog decision.
@@ -152,6 +119,21 @@
 **By:** Amos
 **What:** Added a separate `IMigrationExecutor` and `IMigrationRunStore` seam for full data migration execution. Execution planning uses metadata relationships to order parents before children, remaps source-to-target ids during load, and defers unresolved/self-referential lookups to a second relationship patch pass. Run state and redacted progress are persisted through the run store and operation logger; record payload values are not logged.
 **Why:** Migration execution has to survive failure and retry without hiding state in the process. Keeping execution, data-provider, and run-state contracts in Application and implementations in Infrastructure preserves ADR-0002 boundaries while giving the coordinator a safe DI/API hook to wire.
+
+### 2026-08-06: Incremental delta migration strategy
+**By:** Amos
+**What:** Default incremental migration should use Dataverse change tracking per eligible table, persist the returned `DataToken`/delta link only after the corresponding upserts, deletes, relationship patches, and checkpoints succeed, and apply writes through alternate-key-based upsert so replays converge. When change tracking is unavailable, disabled, or stale, the safe fallback is a full re-scan; `modifiedon` polling is only an explicit best-effort fallback that does not claim delete completeness.
+**Why:** Change tracking is the supported Dataverse mechanism that captures creates, updates, and deletes inside the retention window, while alternate-key upsert gives stable cross-environment idempotency and feeds the existing #23 source-to-target id remapping. Anything less either misses deletes or cannot prove the migration will resume cleanly after failure.
+
+### 2026-08-06: Checkpoint/resume state is the migration source of truth
+**By:** Amos
+**What:** Migration execution now treats the durable checkpoint as the source of truth for resume: it records per-table, per-batch, per-record source/target mappings, retry attempts, failure context, idempotency mode, last processed position, and a monotonically advancing marker. Resume loads the latest checkpoint, skips completed units, retries incomplete units within the configured cap, and exposes redacted operator guidance through the run read model/API.
+**Why:** Long-running Dataverse migrations must survive process interruption without duplicating completed writes. Alternate keys are preferred for idempotent upsert; source-record IDs and checkpointed source-to-target mappings are the fallback, with explicit at-least-once risk guidance when no supported key exists.
+
+### 2026-08-06: Supported solution-component migration surface
+**By:** Naomi
+**What:** The MVP solution-component migration surface should use supported solution ALM only: assemble/select a custom unmanaged source solution, validate dependencies and target readiness, export a managed artifact, import it with tracked ImportJob diagnostics, and treat conditional components such as flows, canvas apps, plug-ins, connection references, and environment variables as gated by preflight checks. Direct Dataverse Solution APIs are acceptable for backend orchestration; `pac solution` and Power Platform Build Tools remain the preferred operator/CI wrappers. Code App solution association, default-solution moves, record data, role assignments, secrets, private APIs, and destructive upgrade/delete automation are deferred or excluded.
+**Why:** This keeps component migration inside Microsoft-supported APIs and tooling, respects managed/unmanaged ALM behavior, preserves GCC High/sovereign endpoint configurability, and complements #20 metadata discovery, #21 compare/readiness, and #23 data migration without mixing metadata packaging with row movement.
 
 ## Governance
 - All meaningful changes require team consensus

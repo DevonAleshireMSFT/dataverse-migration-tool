@@ -23,3 +23,5 @@
 📌 Team update (2026-08-06T22:24:36-07:00): Wave A delivered Issue #20 metadata discovery read models, discovery service contracts, and TTL/invalidation caching in PR #64.
 
 📌 Team update (2026-08-06T22:53:26-07:00): Wave B delivered Issue #21 environment compare and migration readiness report in PR #66.
+
+📌 Team update (2026-08-06T23:25:11-07:00): Wave C delivered Issue #27 supported solution-component migration surface spike in PR #70, documenting the MVP supported-ALM path, readiness/dependency gates, ImportJob diagnostics, pac/Build Tools wrappers, Solution API orchestration, and deferred unsupported/destructive surfaces.

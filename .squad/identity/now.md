@@ -1,9 +1,9 @@
 ---
-updated_at: 2026-08-06T22:53:26-07:00
+updated_at: 2026-08-06T23:25:11-07:00
 focus_area: v0.6.0 incremental migration & solution components
-active_issues: [24, 25, 26, 27, 28]
+active_issues: [26, 28]
 ---
 
 # What We're Focused On
 
-v0.5.0 is complete: the core engine, environment compare/readiness, full migration execution, validation, and UI shell are in place. The app now runs end-to-end with the API booting, six routes exposed, and 42 backend tests passing. v0.6.0 focuses on incremental/delta migration, checkpoint/resume/idempotency, and rollback guidance under epic #3, plus solution-component migration under epic #4.
+v0.5.0 is complete: the core engine, environment compare/readiness, full migration execution, validation, and UI shell are in place. v0.6.0 Wave C has now delivered #24, #25, and #27: checkpoint/resume/idempotency shipped with POST `/api/migration-jobs/{jobId}/resume`, and the incremental/delta plus supported solution-component surface spikes landed as design docs. The integrated backend remains green with 48 tests passing. v0.6.0 now focuses on rollback guidance & recovery planning (#26, epic #3) and solution export/import orchestration (#28, epic #4), informed by the #27 spike.
