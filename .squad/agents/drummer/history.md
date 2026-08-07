@@ -15,3 +15,5 @@
 📌 Team update (2026-07-30T15:52:36-07:00): Repository is now live at DevonAleshireMSFT/dataverse-migration-tool (public).
 
 📌 Team update (2026-07-31T11:32:32-07:00): Your backlog home is Epic #8; Epic #9 is shared cross-team work.
+
+📌 Team update (2026-08-05T22:54:08-07:00): Wave 1 delivered Issue #43 CI/CD baseline and strategy in PR #55.
