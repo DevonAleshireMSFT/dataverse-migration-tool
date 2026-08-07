@@ -54,5 +54,7 @@ migrations.MapGet("/{jobId:guid}", async (
 
 app.MapCompareEndpoints();
 app.MapMigrationExecutionEndpoints();
+app.MapSolutionMigrationEndpoints();
 
 app.Run();
+
